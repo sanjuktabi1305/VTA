@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeGuard - Vulnerability Triage System</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #3b82f6;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            border-radius: 0 0 10px 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: var(--primary);
+        }
+        
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary);
+            background-color: #f1f5f9;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .vuln-item {
+            padding: 1rem;
+            border-left: 4px solid var(--danger);
+            background-color: #fef2f2;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        
+        .vuln-medium {
+            border-left-color: var(--warning);
+            background-color: #fffbeb;
+        }
+        
+        .vuln-low {
+            border-left-color: var(--success);
+            background-color: #f0fdf4;
+        }
+        
+        .vuln-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .vuln-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .vuln-severity {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .severity-high {
+            background-color: #fecaca;
+            color: #dc2626;
+        }
+        
+        .severity-medium {
+            background-color: #fed7aa;
+            color: #ea580c;
+        }
+        
+        .severity-low {
+            background-color: #bbf7d0;
+            color: #16a34a;
+        }
+        
+        .vuln-details {
+            margin-top: 0.5rem;
+            font-family: monospace;
+            background-color: #f8fafc;
+            padding: 0.75rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            flex: 1;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-high {
+            color: var(--danger);
+        }
+        
+        .stat-medium {
+            color: var(--warning);
+        }
+        
+        .stat-low {
+            color: var(--success);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f1f5f9;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .file-input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selected-files {
+            margin-top: 15px;
+            text-align: left;
+            width: 100%;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: #f1f5f9;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .remove-file {
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>CodeGuard</h1>
+            <p class="subtitle">AI-Powered Code Vulnerability Triage System</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2 class="card-title">
+                <i>📁</i> Code Analysis
+            </h2>
+            <p>Upload your source code or provide a GitHub repository URL for vulnerability scanning.</p>
+            
+            <div class="upload-area" id="dropZone">
+                <div class="upload-icon">📂</div>
+                <p>Drag & drop your code files here</p>
+                <p>or</p>
+                <div class="file-input-container">
+                    <input type="file" id="fileUpload" multiple style="display: none;">
+                    <button class="btn" id="selectFilesBtn">Select Files</button>
+                </div>
+                <div class="selected-files" id="selectedFiles"></div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">OR</div>
+            
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="repoUrl" placeholder="https://github.com/username/repo" style="flex: 1; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <button class="btn" onclick="analyzeGitHub()">Analyze GitHub Repo</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="analyzeBtn" style="padding: 12px 24px; font-size: 1.1rem;">Analyze Code</button>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing code for vulnerabilities...</p>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="card">
+                <h2 class="card-title">
+                    <i>📊</i> Scan Results
+                </h2>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value stat-high" id="highCount">0</div>
+                        <div>High Severity</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value stat-medium" id="mediumCount">0</div>
+                        <div>Medium Severity</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value stat-low" id="lowCount">0</div>
+                        <div>Low Severity</div>
+                    </div>
+                </div>
+                
+                <div id="vulnerabilitiesList">
+                    <!-- Vulnerabilities will be inserted here -->
+                </div>
+                
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button class="btn btn-warning" onclick="generateReport()">Generate Full Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>Built for 24-Hour Hackathon | CodeGuard Vulnerability Triage System</p>
+        </div>
+    </footer>
+
+    <script>
+        // Store selected files
+        let selectedFiles = [];
+        
+        // DOM elements
+        const fileUpload = document.getElementById('fileUpload');
+        const selectFilesBtn = document.getElementById('selectFilesBtn');
+        const selectedFilesContainer = document.getElementById('selectedFiles');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const dropZone = document.getElementById('dropZone');
+        
+        // Set up event listeners
+        selectFilesBtn.addEventListener('click', () => fileUpload.click());
+        
+        fileUpload.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        analyzeBtn.addEventListener('click', startAnalysis);
+        
+        // Drag and drop handling
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#2563eb';
+            dropZone.style.backgroundColor = '#f1f5f9';
+        });
+        
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#cbd5e1';
+            dropZone.style.backgroundColor = 'transparent';
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#cbd5e1';
+            dropZone.style.backgroundColor = 'transparent';
+            
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+        
+        // Handle selected files
+        function handleFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Only add if not already in the list
+                if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            }
+            
+            updateSelectedFilesList();
+        }
+        
+        // Update the UI with selected files
+        function updateSelectedFilesList() {
+            selectedFilesContainer.innerHTML = '';
+            
+            if (selectedFiles.length === 0) {
+                selectedFilesContainer.innerHTML = '<p>No files selected</p>';
+                return;
+            }
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${file.name} (${formatFileSize(file.size)})</span>
+                    <span class="remove-file" onclick="removeFile(${index})">×</span>
+                `;
+                selectedFilesContainer.appendChild(fileItem);
+            });
+        }
+        
+        // Format file size to human readable format
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Remove a file from the selection
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateSelectedFilesList();
+        }
+        
+        // Mock data for demonstration
+        const mockVulnerabilities = [
+            {
+                type: "SQL Injection",
+                severity: "high",
+                file: "app/models/user.py",
+                line: 42,
+                codeSnippet: "query = f\"SELECT * FROM users WHERE username = '{username}'\";",
+                description: "Direct user input interpolation in SQL query allows injection attacks."
+            },
+            {
+                type: "Hardcoded Secret",
+                severity: "medium",
+                file: "config/settings.py",
+                line: 15,
+                codeSnippet: "API_KEY = '12345-abcdef-67890'",
+                description: "API key is hardcoded in source code. Should use environment variables."
+            },
+            {
+                type: "XSS Vulnerability",
+                severity: "high",
+                file: "app/templates/profile.html",
+                line: 28,
+                codeSnippet: "<div>{{ user_input }}</div>",
+                description: "User input is directly rendered without sanitization, allowing XSS attacks."
+            },
+            {
+                type: "Insecure Randomness",
+                severity: "low",
+                file: "app/utils/helpers.py",
+                line: 7,
+                codeSnippet: "random.seed(time.time())",
+                description: "Using insecure random number generator for security-sensitive functionality."
+            }
+        ];
+        
+        // Analyze GitHub repository
+        function analyzeGitHub() {
+            const repoUrl = document.getElementById('repoUrl').value;
+            if (!repoUrl) {
+                alert('Please enter a GitHub repository URL');
+                return;
+            }
+            
+            startAnalysis();
+        }
+        
+        // Start analysis process
+        function startAnalysis() {
+            if (selectedFiles.length === 0) {
+                const repoUrl = document.getElementById('repoUrl').value;
+                if (!repoUrl) {
+                    alert('Please select files or enter a GitHub repository URL');
+                    return;
+                }
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            // Simulate processing time
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+                displayResults(mockVulnerabilities);
+            }, 2000);
+        }
+        
+        // Display results in the UI
+        function displayResults(vulnerabilities) {
+            const vulnerabilitiesList = document.getElementById('vulnerabilitiesList');
+            vulnerabilitiesList.innerHTML = '';
+            
+            let highCount = 0;
+            let mediumCount = 0;
+            let lowCount = 0;
+            
+            vulnerabilities.forEach(vuln => {
+                // Count by severity
+                if (vuln.severity === 'high') highCount++;
+                else if (vuln.severity === 'medium') mediumCount++;
+                else if (vuln.severity === 'low') lowCount++;
+                
+                // Create vulnerability element
+                const vulnElement = document.createElement('div');
+                vulnElement.className = `vuln-item vuln-${vuln.severity}`;
+                
+                vulnElement.innerHTML = `
+                    <div class="vuln-header">
+                        <div class="vuln-title">${vuln.type}</div>
+                        <span class="vuln-severity severity-${vuln.severity}">${vuln.severity.toUpperCase()}</span>
+                    </div>
+                    <div><strong>File:</strong> ${vuln.file}:${vuln.line}</div>
+                    <div>${vuln.description}</div>
+                    <div class="vuln-details">${vuln.codeSnippet}</div>
+                `;
+                
+                vulnerabilitiesList.appendChild(vulnElement);
+            });
+            
+            // Update counters
+            document.getElementById('highCount').textContent = highCount;
+            document.getElementById('mediumCount').textContent = mediumCount;
+            document.getElementById('lowCount').textContent = lowCount;
+        }
+        
+        // Generate a report
+        function generateReport() {
+            alert('In a full implementation, this would generate a detailed PDF/HTML/JSON report');
+        }
+        
+        // Initialize the UI
+        updateSelectedFilesList();
+    </script>
+</body>
+</html>

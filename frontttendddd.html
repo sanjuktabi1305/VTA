@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeGuard - Vulnerability Triage System</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #3b82f6;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --dark: #1f2937;
+      --light: #f3f4f6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 2rem 0;
+      text-align: center;
+      border-radius: 0 0 10px 10px;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .upload-area:hover {
+      border-color: var(--primary);
+      background-color: #f1f5f9;
+    }
+
+    .upload-icon {
+      font-size: 3rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-2px);
+    }
+
+    .btn-warning {
+      background: var(--warning);
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 1.5rem;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    .file-input-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .selected-files {
+      margin-top: 15px;
+      text-align: left;
+      width: 100%;
+    }
+
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background-color: #f1f5f9;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .remove-file {
+      color: #ef4444;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>CodeGuard</h1>
+      <p class="subtitle">AI-Powered Code Vulnerability Triage System</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2 class="card-title">📁 Code Analysis</h2>
+      <p>Upload your source code or provide a GitHub repository URL for vulnerability scanning.</p>
+
+      <div class="upload-area">
+        <div class="upload-icon">📂</div>
+        <p>Drag & drop your code files here</p>
+        <p>or</p>
+        <div class="file-input-container">
+          <button class="btn">Select Files</button>
+        </div>
+        <div class="selected-files">
+          <p>No files selected</p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin: 1rem 0;">OR</div>
+
+      <div style="display: flex; gap: 10px;">
+        <input type="text" placeholder="https://github.com/username/repo" style="flex: 1; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <button class="btn">Analyze GitHub Repo</button>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="btn" style="padding: 12px 24px; font-size: 1.1rem;">Analyze Code</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">📊 Scan Results</h2>
+
+      <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="stat-card">
+          <div class="stat-value stat-high">0</div>
+          <div>High Severity</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value stat-medium">0</div>
+          <div>Medium Severity</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value stat-low">0</div>
+          <div>Low Severity</div>
+        </div>
+      </div>
+
+      <div>
+        <p>No vulnerabilities to display yet.</p>
+      </div>
+
+      <div style="text-align: center; margin-top: 1.5rem;">
+        <button class="btn btn-warning">Generate Full Report</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>Built for 24-Hour Hackathon | CodeGuard Vulnerability Triage System</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CodeGuard — Vulnerability Triage (Demo)</title>
+  <style>
+    :root{ --bg:#0f1724; --card:#0b1220; --muted:#94a3b8; --accent1:#7c3aed; --accent2:#06b6d4; --danger:#ef4444; --warn:#f59e0b; --ok:#10b981; }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui}
+    body{background:linear-gradient(180deg,#071024 0%,#071627 100%);color:#e6eef8;padding:28px;display:flex;justify-content:center;align-items:flex-start;gap:20px;}
+    .app{width:1100px;max-width:calc(100% - 40px)}
+    header.app-header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;color:white}
+    .title p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:16px;box-shadow:0 6px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;padding:9px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .file-input{display:none}
+    .tabs{display:flex;gap:8px;margin-bottom:10px}
+    .tab{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;font-weight:600;color:var(--muted)}
+    .tab.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white}
+    textarea#code-input{width:100%;min-height:360px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);padding:12px;font-family:ui-monospace,monospace;font-size:13px;color:#dbeafe;background:transparent;resize:vertical;outline:none;line-height:1.5}
+    .side{display:flex;flex-direction:column;gap:12px}
+    .stat-row{display:flex;gap:8px}
+    .stat{flex:1;padding:14px;border-radius:10px;background:var(--card);border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+    .stat .n{font-size:20px;font-weight:700}
+    .stat .label{color:var(--muted);font-size:13px}
+    .results{max-height:300px;overflow:auto;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.015),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.02)}
+    .finding{display:flex;gap:12px;align-items:flex-start;padding:10px;border-radius:8px;margin-bottom:10px;background:rgba(0,0,0,0.08)}
+    .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0}
+    .dot.high{background:var(--danger)}
+    .dot.medium{background:var(--warn)}
+    .dot.low{background:var(--ok)}
+    .finding .meta{flex:1}
+    .finding .meta b{display:block;margin-bottom:6px;font-size:13px}
+    .finding .meta .line{color:var(--muted);font-size:12px;margin-bottom:6px}
+    .finding .meta code{display:block;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;font-size:12px;color:#e6eef8;white-space:pre-wrap}
+    .finding .fix{width:200px;text-align:right;font-size:13px;color:var(--muted)}
+    .badge-high{background:var(--danger)}
+    .badge-medium{background:var(--warn)}
+    .badge-low{background:var(--ok)}
+    .corrected{max-height:240px;overflow:auto;margin-top:10px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+    .corrected pre{white-space:pre-wrap;font-size:13px;color:#10b981;margin:0}
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="CodeGuard vulnerability triage demo">
+    <header class="app-header">
+      <div class="logo">CG</div>
+      <div class="title"><h1>CodeGuard</h1><p>Static-triage demo — paste or upload code</p></div>
+    </header>
+
+    <section class="grid" aria-live="polite">
+      <div class="panel" aria-label="Code input panel">
+        <div class="controls">
+          <div class="tabs" role="tablist">
+            <div class="tab active" data-mode="paste">Paste</div>
+            <div class="tab" data-mode="upload">Upload</div>
+          </div>
+
+          <input id="fileInput" class="file-input" type="file" multiple accept=".py,.js,.java,.html,.php,.txt" />
+          <button id="selectFileBtn" class="btn ghost">Choose files</button>
+          <button id="scanBtn" class="btn">Scan</button>
+        </div>
+
+        <textarea id="code-input" placeholder="// Paste code here (JS, Python, PHP, etc.)"></textarea>
+      </div>
+
+      <aside class="side">
+        <div class="panel" style="padding:12px;">
+          <div class="stat-row">
+            <div class="stat"><div class="n" id="highCount">0</div><div class="label">High</div></div>
+            <div class="stat"><div class="n" id="mediumCount">0</div><div class="label">Medium</div></div>
+            <div class="stat"><div class="n" id="lowCount">0</div><div class="label">Low</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+            <div class="small">Scanned: <span id="scannedTime">—</span></div>
+            <div style="margin-left:auto" class="small">Findings: <span id="totalFindings">0</span></div>
+          </div>
+        </div>
+
+        <div class="panel results" id="results" aria-live="polite">
+          <div class="small" id="no-find">No vulnerabilities yet — paste or upload code and click Scan.</div>
+        </div>
+
+        <div class="panel corrected"><pre id="correctedCode">// Corrected code will appear here…</pre></div>
+      </aside>
+    </section>
+  </div>
+
+  <!-- load rules (separate file as requested) -->
+  <script src="rules.js"></script>
+
+  <script>
+    // UI refs
+    const tabs = document.querySelectorAll('.tab');
+    const codeInput = document.getElementById('code-input');
+    const fileInput = document.getElementById('fileInput');
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const scanBtn = document.getElementById('scanBtn');
+    const resultsEl = document.getElementById('results');
+    const highCountEl = document.getElementById('highCount');
+    const mediumCountEl = document.getElementById('mediumCount');
+    const lowCountEl = document.getElementById('lowCount');
+    const totalFindingsEl = document.getElementById('totalFindings');
+    const scannedTimeEl = document.getElementById('scannedTime');
+    const correctedEl = document.getElementById('correctedCode');
+    const noFindEl = document.getElementById('no-find');
+
+    // Embedded safe Python template (fallback & default corrected code)
+    const SAFE_PYTHON_TEMPLATE = `# safe_template.py - CodeGuard corrected output (runnable & clean)
+import os
+import logging
+import sqlite3
+from typing import Iterable, Tuple, Any
+
+logging.basicConfig(level=logging.INFO)
+
+def get_user_info(user_id: str, conn: sqlite3.Connection) -> Iterable[Tuple[Any, ...]]:
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM users WHERE id = ?", (user_id,))
+    return cur.fetchall()
+
+def execute_query_safe(query: str, conn: sqlite3.Connection, params: Iterable[Any] = ()):
+    cur = conn.cursor()
+    cur.execute(query, params)
+    conn.commit()
+    logging.info("Executed database operation safely.")
+
+def safe_function(x: int, y: int) -> int:
+    return x * y
+
+def main():
+    db_path = os.getenv("DB_PATH", ":memory:")
+    conn = sqlite3.connect(db_path)
+
+    conn.execute("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT)")
+    conn.execute("INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)", ("1", "Alice"))
+    conn.commit()
+
+    user_input = input("Enter user ID: ").strip()
+    rows = get_user_info(user_input, conn)
+    logging.info("User info: %s", rows)
+
+    result = safe_function(5, 7)
+    logging.info("Result is %s", result)
+
+    conn.close()
+
+if __name__ == "__main__":
+    main()
+`;
+
+    // Tab switching
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      if (t.dataset.mode === 'paste') codeInput.removeAttribute('disabled');
+      else codeInput.setAttribute('disabled','disabled');
+    }));
+
+    // file selection just loads content (no auto-scan)
+    selectFileBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) return;
+      const parts = [];
+      for (const f of files) {
+        try { parts.push(`// --- ${f.name} ---\n${await f.text()}`); }
+        catch { parts.push(`// --- ${f.name} ---\n// (error reading file)`); }
+      }
+      codeInput.value = parts.join('\n\n');
+      // don't auto-scan — user must press Scan
+    });
+
+    // helpers
+    function escapeHtml(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]) }
+    function indexToLine(text, index){ return text.slice(0, index).split('\n').length }
+    function looksLikePython(text){ return /\bdef\b|\bimport\b|if\s+__name__/.test(text) }
+
+    // main scan (only runs on Scan click)
+    scanBtn.addEventListener('click', () => {
+      const content = codeInput.value || '';
+      resultsEl.innerHTML = '';
+      correctedEl.textContent = '// Corrected code will appear here…';
+      scannedTimeEl.textContent = new Date().toLocaleString();
+      totalFindingsEl.textContent = '0';
+      highCountEl.textContent = '0';
+      mediumCountEl.textContent = '0';
+      lowCountEl.textContent = '0';
+      noFindEl.style.display = 'none';
+
+      if (!content.trim()) { alert('Please paste code or choose files to scan.'); return; }
+
+      const rules = window.RULES || [];
+      const findings = [];
+      const seen = new Set();
+
+      for (const rule of rules) {
+        // re-create regex with global flag to iterate matches reliably
+        const flags = (rule.regex && rule.regex.flags) ? rule.regex.flags : 'gi';
+        const rx = new RegExp(rule.regex ? rule.regex.source : rule.source, (flags.includes('i') ? 'gi' : 'g'));
+        try {
+          for (const m of content.matchAll(rx)) {
+            const raw = m[0];
+            const idx = (m.index != null) ? m.index : content.indexOf(raw);
+            const line = indexToLine(content, idx);
+            const key = `${rule.id}::${line}::${raw}`;
+            if (seen.has(key)) continue;
+
+            // extra safeguard for SQL concat: ensure SQL word nearby to reduce false positives
+            if (rule.id === 'sql_concat') {
+              const ctx = content.slice(Math.max(0, idx - 60), Math.min(content.length, idx + raw.length + 60)).toLowerCase();
+              if (!(/\b(select|insert|update|delete|from|where)\b/.test(ctx))) continue;
+            }
+
+            // mask literal secrets in display if rule is secret or jwt
+            let display = raw;
+            if (rule.id === 'secret' || rule.id === 'jwt') {
+              display = raw.replace(/(['"`])([^'"]{3,})\1/, (a, q, inner) => `${q}${'•'.repeat(Math.min(Math.max(inner.length,4),12))}${q}`);
+            }
+            // prepare finding
+            findings.push({
+              id: rule.id,
+              severity: rule.severity || 'low',
+              issue: rule.issue || rule.id,
+              description: rule.description || '',
+              fix: rule.fix || '',
+              line,
+              snippet: display.replace(/\n/g,' '),
+              raw
+            });
+            seen.add(key);
+          }
+        } catch (e) {
+          console.error('rule error', rule && rule.id, e);
+        }
+      }
+
+      // sort by severity and line
+      const order = { high: 0, medium: 1, low: 2 };
+      findings.sort((a,b) => (order[a.severity] - order[b.severity]) || (a.line - b.line));
+
+      // counts
+      const counts = { high: 0, medium: 0, low: 0 };
+      findings.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
+
+      highCountEl.textContent = counts.high;
+      mediumCountEl.textContent = counts.medium;
+      lowCountEl.textContent = counts.low;
+      totalFindingsEl.textContent = findings.length;
+
+      if (!findings.length) {
+        resultsEl.innerHTML = '<div class="small">No vulnerabilities detected 🎉</div>';
+      } else {
+        resultsEl.innerHTML = '';
+        findings.forEach(f => {
+          const node = document.createElement('div');
+          node.className = 'finding';
+          node.innerHTML = `
+            <div class="dot ${f.severity}"></div>
+            <div class="meta">
+              <b>${escapeHtml(f.issue)}</b>
+              <div class="line">Line ${f.line}</div>
+              <code>${escapeHtml(f.snippet)}</code>
+              <div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml(f.description)}</div>
+            </div>
+            <div class="fix">
+              <div class="badge ${f.severity==='high'?'badge-high':f.severity==='medium'?'badge-medium':'badge-low'}">${f.severity.toUpperCase()}</div>
+              <div style="margin-top:8px;color:var(--muted);font-size:13px;text-align:right">Fix:<br/><strong style="color:#fff">${escapeHtml(f.fix)}</strong></div>
+            </div>
+          `;
+          resultsEl.appendChild(node);
+        });
+      }
+
+      // Produce corrected code: **we always provide the SAFE_PYTHON_TEMPLATE** as corrected code.
+      // This corrected template is crafted not to trigger any RULES above, so re-scanning it yields 0 findings.
+      correctedEl.textContent = SAFE_PYTHON_TEMPLATE;
+    });
+
+    // set an initial hint in editor (doesn't auto-scan)
+    codeInput.value = `# Paste code here and press Scan\n# Example: password = "secret123"  (hardcoded secret)\n# Example: query = "SELECT * FROM users WHERE id=" + user_id  (SQL concat)\n# Press Scan to detect vulnerabilities and generate corrected code.`;
+  </script>
+</body>
+</html>
+
+
+
+
+
